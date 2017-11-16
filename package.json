@@ -1,6 +1,6 @@
 {
     "name": "sfn-logger",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Simple Friendly Node.js Logger.",
     "main": "index.js",
     "scripts": {
@@ -30,6 +30,6 @@
         "sfn-channel": "^0.2.3",
         "sfn-date": "^0.1.1",
         "sfn-mail": "^0.1.1",
-        "sfn-logger": "^0.1.2"
+        "sfn-output-buffer": "^0.1.2"
     }
 }
