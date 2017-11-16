@@ -1,0 +1,5 @@
+.vscode/
+2017*/
+node_modules/
+example.log
+package-lock.json
