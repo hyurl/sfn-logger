@@ -3,7 +3,6 @@ const zlib = require("zlib");
 const path = require("path");
 const util = require("util");
 const cluster = require("cluster");
-const Channel = require("sfn-channel");
 const Mail = require("sfn-mail");
 const OutputBuffer = require("sfn-output-buffer");
 const date = require('sfn-date');
@@ -105,17 +104,16 @@ class Logger extends OutputBuffer {
     push(level, ...msg) {
         if (cluster.isWorker) {
             // Send the log to the master if in a worker process.
-            Channel.getChannel(channel => {
-                channel.emit("----log----", {
-                    level,
-                    msg,
-                    ttl: this.ttl,
-                    size: this.size,
-                    filename: this.filename,
-                    fileSize: this.fileSize,
-                    action: this.action,
-                    mail: this.mail,
-                });
+            process.send({
+                event: "----sfn-log----",
+                level,
+                msg,
+                ttl: this.ttl,
+                size: this.size,
+                filename: this.filename,
+                fileSize: this.fileSize,
+                action: this.action,
+                mail: this.mail,
             });
         } else {
             msg = util.format(...msg);
@@ -164,14 +162,14 @@ class Logger extends OutputBuffer {
 // Handle logs within multiprocessing.
 if (cluster.isMaster) {
     let loggers = {};
-    Channel.on("online", channel => {
-        channel.on("----log----", data => {
-            var { level, msg, filename, action } = data;
+    cluster.on("message", (worker, log) => {
+        if (log.event === "----sfn-log----") {
+            var { level, msg, filename, action } = log;
             if (!loggers[filename]) {
-                loggers[filename] = new Logger(data, action);
+                loggers[filename] = new Logger(log, action);
             }
             loggers[filename].push(level, ...msg);
-        });
+        }
     });
 }
 

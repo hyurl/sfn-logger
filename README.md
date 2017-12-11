@@ -2,6 +2,9 @@
 
 **Simple Friendly Node.js Logger.**
 
+This module uses [sfn-output-buffer](https://github.com/hyurl/sfn-logger) to 
+log contents in a synchronous way, but actually it's handled asynchronously.
+
 ## Install
 
 ```sh
@@ -96,23 +99,15 @@ This module supports multiprocessing, when the current process is a worker
 process, then every thing you logged will be send to the master process, which
 will handle logging in multiprocessing to protect concurrency conflicts.
 
-Multiprocessing relies on the module 
-[sfn-channel](https://github.com/Hyurl/sfn-channel), which is a better way to 
-communicate between processes.
-
 ```javascript
-const Channel = require("sfn-cahnnel");
+const cluster = require("cluster");
 const Logger = require("sfn-logger");
 
-if(Channel.isMaster){
-    // Create two channels to workers A and B.
-    new Channel("A", true);
-    new Channel("B", true);
+if(cluster.isMaster){
+    // Fork a new worker.
+    var worker = cluster.fork();
 }else{
-    Channel.on("online", channel=>{
-        var logger = new Logger("example.log");
-
-        logger.log("This log will sent to the master process.");
-    });
+    var logger = new Logger("example.log");
+    logger.log("This log will sent to the master process.");
 }
 ```
