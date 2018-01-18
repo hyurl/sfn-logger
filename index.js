@@ -12,9 +12,9 @@ class Logger extends OutputBuffer {
     /**
      * Creates a new logger.
      * 
-     * @param {String|Object} options A file that stores logs or an object 
+     * @param {string|object} options A file that stores logs or an object 
      *  configures the logger.
-     * @param {String} [action] An optional action name.
+     * @param {string} [action] An optional action name.
      */
     constructor(options, action = "default") {
         if (typeof options == "string") {
@@ -125,7 +125,7 @@ class Logger extends OutputBuffer {
     /**
      * Outputs a message to the log file at LOG level.
      * 
-     * @param {String} msg Log message.
+     * @param {string[]} msg Log message.
      */
     log(...msg) {
         return this.push("LOG", ...msg);
@@ -134,7 +134,7 @@ class Logger extends OutputBuffer {
     /**
      * Outputs a message to the log file at INFO level.
      * 
-     * @param {String} msg Log message.
+     * @param {string[]} msg Log message.
      */
     info(...msg) {
         return this.push("INFO", ...msg);
@@ -143,7 +143,7 @@ class Logger extends OutputBuffer {
     /**
      * Outputs a message to the log file at WARN level.
      * 
-     * @param {String} msg Log message.
+     * @param {string[]} msg Log message.
      */
     warn(...msg) {
         return this.push("WARN", ...msg);
@@ -152,7 +152,7 @@ class Logger extends OutputBuffer {
     /**
      * Outputs a message to the log file at ERROR level.
      * 
-     * @param {String} msg Log message.
+     * @param {string[]} msg Log message.
      */
     error(...msg) {
         return this.push("ERROR", ...msg);

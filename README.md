@@ -34,20 +34,17 @@ var count = 0,
 
 ## API
 
-### `new Logger(options: string|object, action:? string)`
-
-**Creates a new logger.**
-
-- `options` A file that stores logs or an object configures the logger, 
-    supports:
-    - `ttl` Time to live, default is `1000`ms.
-    - `size` Buffer size, if set, then `ttl` will be ignored.
-    - `filename` Flush buffer to a disk file.
-    - `fileSize` Maximum size of the output file.
-    - `mail` An object configures a new Mail instance (from 
-        [sfn-mail](https://github.com/hyurl/sfn-mail)) or a existing Mail 
-        instance.
-- `[action]` An optional action name, default is `default`.
+- `new Logger(filename: string, action?: string)`
+- `new Logger(options: object, action?: string)`
+    - `options` An object configures the logger, supports:
+        - `ttl` Time to live, default is `1000`ms.
+        - `size` Buffer size, if set, then `ttl` will be ignored.
+        - `filename` Flush buffer to a disk file.
+        - `fileSize` Maximum size of the output file.
+        - `mail` An object configures a new Mail instance (from 
+            [sfn-mail](https://github.com/hyurl/sfn-mail)) or a existing Mail 
+            instance.
+    - `[action]` An optional action name, default is `default`.
 
 ```javascript
 // Simplest way to create a logger:
