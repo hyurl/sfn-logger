@@ -1,13 +1,15 @@
-import * as OutputBuffer from "sfn-output-buffer";
-import * as Mail from "sfn-mail";
+import OutputBuffer = require("sfn-output-buffer");
+import Mail = require("sfn-mail");
 
 declare class Logger extends OutputBuffer {
-    constructor(optinos: {
+    action: string;
+
+    constructor(optinos?: {
         ttl?: number,
         size?: number,
         filename?: string,
         fileSize?: number,
-        mail: Mail | object
+        mail?: Mail | object
     }, action?: string);
     constructor(filename: string, action?: string);
 
