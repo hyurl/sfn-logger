@@ -28,11 +28,11 @@ class Logger extends OutputBuffer {
         // instance or an object to configure for a new Mail instance (exposed
         // from sfn-mail module).
         if (options.mail instanceof Mail) {
-            this.mail = options.mail;
-        } else if (options.mail) {
-            this.mail = new Mail(options.mail);
+            this.mailer = options.mail;
+            this.mail = this.mailer.options;
         } else {
-            this.mail = null;
+            this.mail = options.mail;
+            this.mailer = null;
         }
 
         this.limitHandler = (filename, data, next) => {
@@ -51,9 +51,12 @@ class Logger extends OutputBuffer {
                         this.error(err);
                         return next();
                     }
-                    if (this.mail && !(this.mail instanceof Mail))
-                        this.mail = new Mail(this.mail);
-                    this.mail
+
+                    if (!this.mailer) {
+                        this.mailer = new Mail(this.mail);
+                    }
+
+                    this.mailer
                         .text(contents)
                         .send()
                         .then(res => rewriteFile())
