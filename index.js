@@ -170,6 +170,8 @@ if (cluster.isMaster) {
             var { level, msg, filename, action } = log;
             if (!loggers[filename]) {
                 loggers[filename] = new Logger(log, action);
+            } else {
+                loggers[filename].action = action;
             }
             loggers[filename].push(level, ...msg);
         }
