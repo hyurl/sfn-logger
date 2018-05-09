@@ -62,15 +62,15 @@ var logger = new Logger({
     size: 1024 * 4,
     filename: "example.log",
     fileSize: 1024 * 1024 * 2,
-    mail: {
+    mail: { // must set all neccesary properties.
         subject: "Logs of My Website"
         host: "smtp.mail.qq.com",
         port: 25,
         from: "xxxxxxxx@qq.com",
         to: "xxxxxxxx@qq.com",
         auth: {
-            user: "xxxxxxxx@qq.com",
-            pass: "xxxxxxxx",
+            username: "xxxxxxxx@qq.com",
+            password: "xxxxxxxx",
         }
     }
 });
