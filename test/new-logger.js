@@ -1,11 +1,11 @@
-const Logger = require("../");
-const assert = require("assert");
-const { EOL } = require("os");
+var Logger = require("../");
+var assert = require("assert");
+var EOL = require("os").EOL;
 
-describe("new Logger()", () => {
-    describe("new Logger(filename: string, action?: string)", () => {
-        it("should create instance with a filename", () => {
-            let logger = new Logger("example.log"),
+describe("new Logger()", function () {
+    describe("new Logger(filename: string, action?: string)", function () {
+        it("should create instance with a filename", function () {
+            var logger = new Logger("example.log"),
                 expected = Object.assign({}, logger);
 
             delete expected.timer;
@@ -29,8 +29,8 @@ describe("new Logger()", () => {
             logger.close();
         });
 
-        it("should create instance with a filename and a action name", () => {
-            let logger = new Logger("example.log", "my-log"),
+        it("should create instance with a filename and a action name", function () {
+            var logger = new Logger("example.log", "my-log"),
                 expected = Object.assign({}, logger);
 
             delete expected.timer;
@@ -55,13 +55,13 @@ describe("new Logger()", () => {
         });
     });
 
-    describe("new Logger(options: Logger.Options, action?: string)", () => {
-        it("should create instance with options", () => {
-            let logger = new Logger({
+    describe("new Logger(options: Logger.Options, action?: string)", function () {
+        it("should create instance with options", function () {
+            var logger = new Logger({
                 filename: "example.log",
                 size: 4096
             });
-            let expected = Object.assign({}, logger);
+            var expected = Object.assign({}, logger);
 
             delete expected.queue;
 
@@ -81,12 +81,12 @@ describe("new Logger()", () => {
             });
         });
 
-        it("should create instance with options and a action name", () => {
-            let logger = new Logger({
+        it("should create instance with options and a action name", function () {
+            var logger = new Logger({
                 filename: "example.log",
                 size: 4096
             }, "my-log");
-            let expected = Object.assign({}, logger);
+            var expected = Object.assign({}, logger);
 
             delete expected.queue;
 

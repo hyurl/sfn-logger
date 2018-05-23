@@ -108,3 +108,10 @@ if(cluster.isMaster){
     logger.log("This log will sent to the master process.");
 }
 ```
+
+## Compatibility
+
+This package can be run in any NodeJS version than higher than 4.0, but when 
+lower than 6.0, the `mail` option will not work since this package 
+depends on [nodemailer](https://github.com/nodemailer/nodemailer), which only 
+works on NodeJS6 or higher.

@@ -2,11 +2,21 @@ import * as cluster from "cluster";
 import * as path from "path";
 import * as zlib from "zlib";
 import * as util from "util";
-import * as fs from "fs-extra";
+import * as fs from "fs";
 import * as OutputBuffer from "sfn-output-buffer";
 import * as Mail from "sfn-mail";
 import * as date from "sfn-date";
 import idealFilename from "ideal-filename";
+import mkdir = require("mkdirp");
+
+declare global {
+    interface ObjectConstructor {
+        assign(target: object, ...sources: any[]): any;
+    }
+}
+
+const isOldNode = parseFloat(process.version.slice(1)) < 6.0;
+const SfnMail: typeof Mail = isOldNode ? null : require("sfn-mail");
 
 namespace Logger {
     export interface Options extends OutputBuffer.Options {
@@ -31,7 +41,7 @@ class Logger extends OutputBuffer implements Logger.Options {
                 // reset attachments.
                 $this.mailer["message"].attachments = [];
 
-                $this.mailer.attachment(filename).send().then(res => {
+                $this.mailer.attachment(filename).send().then(() => {
                     next();
                 }).catch(err => {
                     $this.error(err);
@@ -41,7 +51,17 @@ class Logger extends OutputBuffer implements Logger.Options {
                 let dir = path.dirname(filename) + `/${date("Y-m-d")}/`,
                     basename = path.basename(filename);
 
-                fs.ensureDir(dir).then(() => {
+                new Promise((resolve, reject) => {
+                    fs.exists(dir, exists => {
+                        if (exists) {
+                            resolve(dir);
+                        } else {
+                            mkdir(dir, err => {
+                                err ? reject(err) : resolve(dir);
+                            });
+                        }
+                    });
+                }).then(() => {
                     return idealFilename(`${dir}${basename}.gz`, ".log.gz");
                 }).then(gzName => {
                     // compress to Gzip.
@@ -75,11 +95,13 @@ class Logger extends OutputBuffer implements Logger.Options {
         super(options);
         this.action = action;
 
-        if (options.mail instanceof Mail) {
-            this.mailer = options.mail;
-            this.mail = options.mail["options"];
-        } else if (typeof options.mail == "object") {
-            this.mailer = new Mail(options.mail);
+        if (typeof SfnMail == "function") {
+            if (options.mail instanceof SfnMail) {
+                this.mailer = options.mail;
+                this.mail = options.mail["options"];
+            } else if (typeof options.mail == "object") {
+                this.mailer = new SfnMail(options.mail);
+            }
         }
     }
 
@@ -134,7 +156,9 @@ if (cluster.isMaster) {
     let loggers: { [filename: string]: Logger } = {};
 
     cluster.on("message", (worker, log) => {
-        if (log.event === "----sfn-log----") {
+        log = isOldNode ? worker : log; // for nodejs before v6.0
+
+        if (log.event == "----sfn-log----") {
             let { level, msg, filename, action } = log;
 
             if (!loggers[filename]) {

@@ -1,18 +1,18 @@
-const Logger = require("../");
-const assert = require("assert");
-const fs = require("fs");
-const date = require("sfn-date");
+var Logger = require("../");
+var assert = require("assert");
+var fs = require("fs");
+var date = require("sfn-date");
 
-describe("Logger.prototype.log()", () => {
-    it("should output logs on LOG level as expected", function (done) {
-        let filename = "logs/example-error.log",
+describe("Logger.prototype.error()", function () {
+    it("should output logs on ERROR level as expected", function (done) {
+        var filename = "logs/example-error.log",
             log = "Something goes wrong!";
 
-        if(fs.existsSync(filename))
+        if (fs.existsSync(filename))
             fs.unlinkSync(filename);
 
-        let dateStr = date();
-        let logger = new Logger({
+        var dateStr = date();
+        var logger = new Logger({
             filename,
             size: 4096
         });
@@ -20,7 +20,7 @@ describe("Logger.prototype.log()", () => {
         logger.error(log);
         logger.close();
 
-        setTimeout(() => {
+        setTimeout(function () {
             assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [ERROR] default - ${log}${logger.EOL}`);
             done();
         }, 500);

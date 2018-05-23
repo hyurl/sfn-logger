@@ -1,21 +1,26 @@
 
 require("source-map-support/register");
-const Logger = require("../");
-const assert = require("assert");
-const fs = require("fs-extra");
-const date = require("sfn-date");
+var Logger = require("../");
+var assert = require("assert");
+var fs = require("fs");
+var date = require("sfn-date");
 
-describe("Logger.prototype.log()", () => {
+describe("Send e-mail when file size out limit (only for NodeJS v6.0+)", function () {
     it("should mail log file as expected", function (done) {
+        if (parseFloat(process.version.slice(1)) < 6.0) {
+            done();
+            return;
+        }
+
         this.timeout(12000);
 
-        let filename = "logs/example-will-be-mailed.log",
+        var filename = "logs/example-will-be-mailed.log",
             log = "Everything goes fine!";
 
-        if(fs.existsSync(filename))
+        if (fs.existsSync(filename))
             fs.unlinkSync(filename);
 
-        let logger = new Logger({
+        var logger = new Logger({
             filename,
             size: 512,
             fileSize: 4096,
@@ -32,12 +37,12 @@ describe("Logger.prototype.log()", () => {
             }
         });
 
-        for (let i = 0; i < 200; i ++) {
+        for (var i = 0; i < 200; i++) {
             logger.log(log + " - " + (i + 1));
         }
 
-        setTimeout(() => {
-            let contents = fs.readFileSync(filename, "utf8");
+        setTimeout(function () {
+            var contents = fs.readFileSync(filename, "utf8");
             assert.ok(contents.indexOf("[ERROR]") === -1);
             done();
             // logger.close();

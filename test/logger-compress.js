@@ -1,40 +1,40 @@
 
+process.setMaxListeners(0);
 require("source-map-support/register");
-const Logger = require("../");
-const assert = require("assert");
-const fs = require("fs-extra");
-const date = require("sfn-date");
+var Logger = require("../");
+var assert = require("assert");
+var fs = require("fs");
+var date = require("sfn-date");
+var idealFilename = require("ideal-filename");
 
-var compressDir = "logs/" + date("Y-m-d");
-
-if(fs.existsSync(compressDir)) {
-    fs.removeSync(compressDir);
-}
-
-describe("Logger.prototype.log()", () => {
+describe("Compress when file size out limit", function () {
     it("should compress log file as expected", function (done) {
         this.timeout(6000);
 
-        let filename = "logs/example-will-be-compressed.log",
+        var filename = "logs/example-will-be-compressed.log",
+            compressDir = "logs/" + date("Y-m-d"),
+            compressFile = compressDir + "/example-will-be-compressed.log.gz",
             log = "Everything goes fine!";
 
-        if(fs.existsSync(filename))
+        if (fs.existsSync(filename))
             fs.unlinkSync(filename);
 
-        let logger = new Logger({
-            filename,
-            size: 512,
-            fileSize: 4096
+        idealFilename(compressFile, ".log.gz", function (err, _filename) {
+            var logger = new Logger({
+                filename,
+                size: 512,
+                fileSize: 4096
+            });
+    
+            for (var i = 0; i < 200; i++) {
+                logger.log(log + " - " + (i + 1));
+            }
+    
+            setTimeout(function () {
+                assert.ok(fs.existsSync(_filename));
+                done();
+                // logger.close();
+            }, 1500);
         });
-
-        for (let i = 0; i < 200; i ++) {
-            logger.log(log + " - " + (i + 1));
-        }
-
-        setTimeout(() => {
-            assert.ok(fs.existsSync(compressDir + "/example-will-be-compressed.log.gz"));
-            done();
-            // logger.close();
-        }, 1500);
     });
 });
