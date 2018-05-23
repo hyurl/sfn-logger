@@ -32,9 +32,11 @@
     "license": "MIT",
     "dependencies": {
         "@types/mkdirp": "^0.5.2",
+        "ideal-filename": "^0.1.2",
         "mkdirp": "^0.5.1",
         "sfn-date": "^0.1.4",
         "sfn-mail": "^0.2.1",
+        "sfn-output-buffer": "^0.2.1",
         "tslib": "^1.9.1"
     },
     "devDependencies": {
