@@ -84,7 +84,7 @@ class Logger extends OutputBuffer implements Logger.Options {
 
     constructor(options?: Logger.Options, action?: string);
     constructor(filename: string, action?: string);
-    constructor(arg, action: string = "default") {
+    constructor(arg, action: string) {
         let options: Logger.Options;
         if (typeof arg == "string") {
             options = { filename: arg };
@@ -121,10 +121,11 @@ class Logger extends OutputBuffer implements Logger.Options {
                 mail: this.mail,
             });
         } else {
-            let _msg: string = util.format.apply(undefined, msg);
+            let _msg: string = util.format.apply(undefined, msg),
+                action: string = this.action ? ` ${this.action} - ` : "";
 
             level = level ? " [" + level + "]" : "";
-            _msg = `[${date()}]${level} ${this.action} - ${_msg}`;
+            _msg = `[${date()}]${level}${action} ${_msg}`;
 
             super.push(_msg);
         }
@@ -163,7 +164,7 @@ if (cluster.isMaster) {
 
             if (!loggers[filename]) {
                 loggers[filename] = new Logger(log, action);
-            } else {
+            } else if (action) {
                 loggers[filename].action = action;
             }
 

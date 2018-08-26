@@ -14,7 +14,6 @@ var SfnMail = isOldNode ? null : require("sfn-mail");
 var Logger = /** @class */ (function (_super) {
     tslib_1.__extends(Logger, _super);
     function Logger(arg, action) {
-        if (action === void 0) { action = "default"; }
         var _this = this;
         var options;
         if (typeof arg == "string") {
@@ -57,9 +56,9 @@ var Logger = /** @class */ (function (_super) {
             });
         }
         else {
-            var _msg = util.format.apply(undefined, msg);
+            var _msg = util.format.apply(undefined, msg), action = this.action ? " " + this.action + " - " : "";
             level = level ? " [" + level + "]" : "";
-            _msg = "[" + date() + "]" + level + " " + this.action + " - " + _msg;
+            _msg = "[" + date() + "]" + level + action + " " + _msg;
             _super.prototype.push.call(this, _msg);
         }
     };
@@ -149,18 +148,18 @@ var Logger = /** @class */ (function (_super) {
 if (cluster.isMaster) {
     var loggers_1 = {};
     cluster.on("message", function (worker, log) {
+        var _a;
         log = isOldNode ? worker : log; // for nodejs before v6.0
         if (log.event == "----sfn-log----") {
             var level = log.level, msg = log.msg, filename = log.filename, action = log.action;
             if (!loggers_1[filename]) {
                 loggers_1[filename] = new Logger(log, action);
             }
-            else {
+            else if (action) {
                 loggers_1[filename].action = action;
             }
             (_a = loggers_1[filename]).push.apply(_a, [level].concat(msg));
         }
-        var _a;
     });
 }
 module.exports = Logger;

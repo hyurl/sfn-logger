@@ -15,7 +15,7 @@ describe("new Logger()", function () {
             assert.ok(typeof logger.timer == "object");
             assert.deepStrictEqual(expected, {
                 EOL,
-                action: "default",
+                action: undefined,
                 closed: false,
                 errorHandler: Logger.Options.errorHandler,
                 fileSize: 2097152,
@@ -68,7 +68,7 @@ describe("new Logger()", function () {
             assert.ok(typeof logger.queue == "object");
             assert.deepStrictEqual(expected, {
                 EOL,
-                action: "default",
+                action: undefined,
                 closed: false,
                 errorHandler: Logger.Options.errorHandler,
                 fileSize: 2097152,
