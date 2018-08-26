@@ -55,7 +55,8 @@ var Logger = /** @class */ (function (_super) {
         if (this.trace) {
             var target = {};
             Error.captureStackTrace(target);
-            action += " [" + trimLeft(target.stack.split("\n")[3]).slice(3) + "]";
+            var stack = trimLeft(target.stack.split("\n")[3]).slice(3);
+            action += " [" + stack.replace("default_1", "default") + "]";
         }
         level = level && level != "LOG" ? " [" + level + "]" : "";
         _msg = "[" + date() + "]" + level + action + " - " + _msg;

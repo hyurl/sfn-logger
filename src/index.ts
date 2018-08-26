@@ -69,7 +69,8 @@ class Logger extends OutputBuffer implements Logger.Options {
         if (this.trace) {
             let target: any = {};
             Error.captureStackTrace(target);
-            action += " [" + trimLeft((<string>target.stack).split("\n")[3]).slice(3) + "]";
+            let stack = trimLeft((<string>target.stack).split("\n")[3]).slice(3);
+            action += " [" + stack.replace("default_1", "default") + "]";
         }
 
         level = level && level != "LOG" ? " [" + level + "]" : "";
