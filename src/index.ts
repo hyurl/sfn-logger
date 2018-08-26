@@ -27,8 +27,8 @@ enum Levels {
 }
 
 class Logger extends OutputBuffer implements Logger.Options {
-    readonly action: string;
-    readonly trace: boolean;
+    action: string;
+    trace: boolean;
     readonly mail: Mail.Options & Mail.Message;
     readonly mailer: Mail;
 
