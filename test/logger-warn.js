@@ -21,7 +21,7 @@ describe("Logger.prototype.warn()", function () {
         logger.close();
 
         setTimeout(function () {
-            assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [WARN] ${log}${logger.EOL}`);
+            assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [WARN] - ${log}${logger.EOL}`);
             done();
         }, 500);
     });

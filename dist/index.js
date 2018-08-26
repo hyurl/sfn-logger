@@ -51,15 +51,14 @@ var Logger = /** @class */ (function (_super) {
         }
         if (Levels[level] < Levels[this.constructor["outputLevel"].toUpperCase()])
             return void 0;
-        var _msg = util.format.apply(undefined, msg), action = this.action ? " " + this.action : "";
+        var _msg = util.format.apply(undefined, msg), action = this.action ? " [" + this.action + "]" : "";
         if (this.trace) {
             var target = {};
             Error.captureStackTrace(target);
-            action += " " + trimLeft(target.stack.split("\n")[3]).slice(3);
+            action += " [" + trimLeft(target.stack.split("\n")[3]).slice(3) + "]";
         }
-        action = action ? action + " -" : "";
         level = level && level != "LOG" ? " [" + level + "]" : "";
-        _msg = "[" + date() + "]" + level + action + " " + _msg;
+        _msg = "[" + date() + "]" + level + action + " - " + _msg;
         if (cluster.isWorker) {
             // Send the log to the master if in a worker process.
             process.send({
@@ -108,7 +107,7 @@ var Logger = /** @class */ (function (_super) {
         }
         return this.push.apply(this, ["ERROR"].concat(msg));
     };
-    /** Sets the lowest level of log that should output. */
+    /** Sets the lowest level of logs that should output. */
     Logger.outputLevel = "LOG";
     return Logger;
 }(OutputBuffer));

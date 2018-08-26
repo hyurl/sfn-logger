@@ -64,18 +64,16 @@ class Logger extends OutputBuffer implements Logger.Options {
             return void 0;
 
         let _msg: string = util.format.apply(undefined, msg),
-            action: string = this.action ? ` ${this.action}` : "";
+            action: string = this.action ? ` [${this.action}]` : "";
 
         if (this.trace) {
             let target: any = {};
             Error.captureStackTrace(target);
-            action += " " + trimLeft((<string>target.stack).split("\n")[3]).slice(3);
+            action += " [" + trimLeft((<string>target.stack).split("\n")[3]).slice(3) + "]";
         }
 
-        action = action ? action + " -" : "";
-
         level = level && level != "LOG" ? " [" + level + "]" : "";
-        _msg = `[${date()}]${level}${action} ${_msg}`;
+        _msg = `[${date()}]${level}${action} - ${_msg}`;
 
         if (cluster.isWorker) {
             // Send the log to the master if in a worker process.
