@@ -24,6 +24,7 @@ describe("new Logger()", function () {
                 size: undefined,
                 ttl: 1000,
                 buffer: null,
+                trace: false
             });
 
             logger.close();
@@ -48,7 +49,8 @@ describe("new Logger()", function () {
                 limitHandler: Logger.Options.limitHandler,
                 size: undefined,
                 ttl: 1000,
-                buffer: null
+                buffer: null,
+                trace: false
             });
 
             logger.close();
@@ -78,6 +80,7 @@ describe("new Logger()", function () {
                 timer: null,
                 ttl: undefined,
                 buffer: null,
+                trace: false
             });
         });
 
@@ -103,6 +106,7 @@ describe("new Logger()", function () {
                 timer: null,
                 ttl: undefined,
                 buffer: null,
+                trace: false
             });
         });
     });

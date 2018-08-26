@@ -9,8 +9,16 @@ var OutputBuffer = require("sfn-output-buffer");
 var date = require("sfn-date");
 var ideal_filename_1 = require("ideal-filename");
 var mkdir = require("mkdirp");
+var trimLeft = require("lodash/trimStart");
 var isOldNode = parseFloat(process.version.slice(1)) < 6.0;
 var SfnMail = isOldNode ? null : require("sfn-mail");
+var Levels;
+(function (Levels) {
+    Levels[Levels["LOG"] = 0] = "LOG";
+    Levels[Levels["INFO"] = 1] = "INFO";
+    Levels[Levels["WARN"] = 2] = "WARN";
+    Levels[Levels["ERROR"] = 3] = "ERROR";
+})(Levels || (Levels = {}));
 var Logger = /** @class */ (function (_super) {
     tslib_1.__extends(Logger, _super);
     function Logger(arg, action) {
@@ -23,7 +31,7 @@ var Logger = /** @class */ (function (_super) {
             options = arg;
         }
         _this = _super.call(this, options) || this;
-        _this.action = action;
+        _this.action = action || options.action;
         if (typeof SfnMail == "function") {
             if (options.mail instanceof SfnMail) {
                 _this.mailer = options.mail;
@@ -41,24 +49,30 @@ var Logger = /** @class */ (function (_super) {
         for (var _i = 1; _i < arguments.length; _i++) {
             msg[_i - 1] = arguments[_i];
         }
+        if (Levels[level] < Levels[this.constructor["outputLevel"].toUpperCase()])
+            return void 0;
+        var _msg = util.format.apply(undefined, msg), action = this.action ? " " + this.action : "";
+        if (this.trace) {
+            var target = {};
+            Error.captureStackTrace(target);
+            action += " " + trimLeft(target.stack.split("\n")[3]).slice(3);
+        }
+        action = action ? action + " -" : "";
+        level = level && level != "LOG" ? " [" + level + "]" : "";
+        _msg = "[" + date() + "]" + level + action + " " + _msg;
         if (cluster.isWorker) {
             // Send the log to the master if in a worker process.
             process.send({
                 event: "----sfn-log----",
-                level: level,
-                msg: msg,
+                msg: _msg,
                 ttl: this.ttl,
                 size: this.size,
                 filename: this.filename,
                 fileSize: this.fileSize,
-                action: this.action,
                 mail: this.mail,
             });
         }
         else {
-            var _msg = util.format.apply(undefined, msg), action = this.action ? " " + this.action + " - " : "";
-            level = level ? " [" + level + "]" : "";
-            _msg = "[" + date() + "]" + level + action + " " + _msg;
             _super.prototype.push.call(this, _msg);
         }
     };
@@ -68,7 +82,7 @@ var Logger = /** @class */ (function (_super) {
         for (var _i = 0; _i < arguments.length; _i++) {
             msg[_i] = arguments[_i];
         }
-        return this.push.apply(this, [""].concat(msg));
+        return this.push.apply(this, ["LOG"].concat(msg));
     };
     /** Outputs a message to the log file at INFO level. */
     Logger.prototype.info = function () {
@@ -94,7 +108,13 @@ var Logger = /** @class */ (function (_super) {
         }
         return this.push.apply(this, ["ERROR"].concat(msg));
     };
-    Logger.Options = Object.assign(OutputBuffer.Options, {
+    /** Sets the lowest level of log that should output. */
+    Logger.outputLevel = "LOG";
+    return Logger;
+}(OutputBuffer));
+(function (Logger) {
+    Logger.Options = Object.assign({}, OutputBuffer.Options, {
+        trace: false,
         limitHandler: function (filename, data, next) {
             var _this = this;
             var $this = this;
@@ -142,23 +162,18 @@ var Logger = /** @class */ (function (_super) {
             this.error(err);
         }
     });
-    return Logger;
-}(OutputBuffer));
+})(Logger || (Logger = {}));
 // Handle logs when the program runs in multiprocessing env.
 if (cluster.isMaster) {
     var loggers_1 = {};
     cluster.on("message", function (worker, log) {
-        var _a;
         log = isOldNode ? worker : log; // for nodejs before v6.0
         if (log.event == "----sfn-log----") {
-            var level = log.level, msg = log.msg, filename = log.filename, action = log.action;
+            var msg = log.msg, filename = log.filename;
             if (!loggers_1[filename]) {
-                loggers_1[filename] = new Logger(log, action);
+                loggers_1[filename] = new Logger(log);
             }
-            else if (action) {
-                loggers_1[filename].action = action;
-            }
-            (_a = loggers_1[filename]).push.apply(_a, [level].concat(msg));
+            OutputBuffer.prototype.push.call(loggers_1[filename], msg);
         }
     });
 }

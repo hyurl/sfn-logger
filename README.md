@@ -44,7 +44,9 @@ var count = 0,
         - `mail` An object configures a new Mail instance (from 
             [sfn-mail](https://github.com/hyurl/sfn-mail)) or a existing Mail 
             instance.
-    - `[action]` An optional action name, default is `default`.
+        - `trace` If set, the log will trace and output the file and position 
+            where triggers logging.
+    - `[action]` An optional action name.
 
 ```javascript
 // Simplest way to create a logger:
@@ -108,6 +110,11 @@ if(cluster.isMaster){
     logger.log("This log will sent to the master process.");
 }
 ```
+
+## Output Level
+
+Setting the static property `Logger.outputLevel` to set the lowest level of logs 
+that should output. It's `LOG` by default, means output all levels.
 
 ## Compatibility
 
