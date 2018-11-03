@@ -94,31 +94,10 @@ familiar with them, please check
 
 ## Multi-Processing
 
-This module supports multiprocessing, when the current process is a worker 
-process, then every thing you logged will be send to the master process, which
-will handle logging in multiprocessing to protect concurrency conflicts.
-
-```javascript
-const cluster = require("cluster");
-const Logger = require("sfn-logger");
-
-if(cluster.isMaster){
-    // Fork a new worker.
-    var worker = cluster.fork();
-}else{
-    var logger = new Logger("example.log");
-    logger.log("This log will sent to the master process.");
-}
-```
+This module is based on [sfn-output-buffer](https://github.com/hyurl/sfn-logger),
+which support multi-processing itself, and prevent concurrency conflicts.
 
 ## Output Level
 
 Setting the static property `Logger.outputLevel` to set the lowest level of logs 
 that should output. It's `LOG` by default, means output all levels.
-
-## Compatibility
-
-This package can be run in any NodeJS version than higher than 4.0, but when 
-lower than 6.0, the `mail` option will not work since this package 
-depends on [nodemailer](https://github.com/nodemailer/nodemailer), which only 
-works on NodeJS6 or higher.

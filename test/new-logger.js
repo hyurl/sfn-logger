@@ -108,6 +108,10 @@ describe("new Logger()", function () {
                 buffer: null,
                 trace: false
             });
+
+            setTimeout(() => {
+                process.exit();
+            }, 500);
         });
     });
 });

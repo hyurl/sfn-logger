@@ -1,13 +1,11 @@
-import * as cluster from "cluster";
 import * as path from "path";
 import * as zlib from "zlib";
 import * as util from "util";
-import * as fs from "fs";
+import * as fs from "fs-extra";
 import * as OutputBuffer from "sfn-output-buffer";
 import * as Mail from "sfn-mail";
 import * as date from "sfn-date";
 import idealFilename from "ideal-filename";
-import mkdir = require("mkdirp");
 import trimLeft = require("lodash/trimStart");
 
 declare global {
@@ -76,20 +74,7 @@ class Logger extends OutputBuffer implements Logger.Options {
         level = level && level != "LOG" ? " [" + level + "]" : "";
         _msg = `[${date()}]${level}${action} - ${_msg}`;
 
-        if (cluster.isWorker) {
-            // Send the log to the master if in a worker process.
-            process.send({
-                event: "----sfn-log----",
-                msg: _msg,
-                ttl: this.ttl,
-                size: this.size,
-                filename: this.filename,
-                fileSize: this.fileSize,
-                mail: this.mail,
-            });
-        } else {
-            super.push(_msg);
-        }
+        super.push(_msg);
     }
 
     /** Outputs a message to the log file at LOG level. */
@@ -147,17 +132,7 @@ namespace Logger {
                 let dir = path.dirname(filename) + `/${date("Y-m-d")}/`,
                     basename = path.basename(filename);
 
-                new Promise((resolve, reject) => {
-                    fs.exists(dir, exists => {
-                        if (exists) {
-                            resolve(dir);
-                        } else {
-                            mkdir(dir, err => {
-                                err ? reject(err) : resolve(dir);
-                            });
-                        }
-                    });
-                }).then(() => {
+                fs.ensureDir(dir).then(() => {
                     return idealFilename(`${dir}${basename}.gz`, ".log.gz");
                 }).then(gzName => {
                     // compress to Gzip.
@@ -175,25 +150,6 @@ namespace Logger {
         },
         errorHandler: function (err) {
             this.error(err);
-        }
-    });
-}
-
-// Handle logs when the program runs in multiprocessing env.
-if (cluster.isMaster) {
-    let loggers: { [filename: string]: Logger } = {};
-
-    cluster.on("message", (worker, log) => {
-        log = isOldNode ? worker : log; // for nodejs before v6.0
-
-        if (log.event == "----sfn-log----") {
-            let { msg, filename } = log;
-
-            if (!loggers[filename]) {
-                loggers[filename] = new Logger(log);
-            }
-
-            OutputBuffer.prototype.push.call(loggers[filename], msg);
         }
     });
 }

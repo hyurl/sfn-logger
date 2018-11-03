@@ -21,6 +21,7 @@ describe("Logger.prototype.error()", function () {
         logger.close();
 
         setTimeout(function () {
+            // console.log(logger.queue)
             assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [ERROR] - ${log}${logger.EOL}`);
             done();
         }, 500);

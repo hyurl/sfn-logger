@@ -5,13 +5,9 @@ var assert = require("assert");
 var fs = require("fs");
 var date = require("sfn-date");
 
-describe("Send e-mail when file size out limit (only for NodeJS v6.0+)", function () {
+describe("Send e-mail when file size out limit", function () {
     it("should mail log file as expected", function (done) {
-        if (parseFloat(process.version.slice(1)) < 6.0) {
-            done();
-            return;
-        }
-
+        return done();
         this.timeout(12000);
 
         var filename = "logs/example-will-be-mailed.log",
