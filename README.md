@@ -2,8 +2,8 @@
 
 **Simple Friendly Node.js Logger.**
 
-This module uses [sfn-output-buffer](https://github.com/hyurl/sfn-logger) to 
-log contents in a synchronous way, but actually it's handled asynchronously.
+This module uses [sfn-output-buffer](https://github.com/hyurl/sfn-output-buffer)
+to log contents in a synchronous way, but actually it's handled asynchronously.
 
 ## Install
 
@@ -94,8 +94,9 @@ familiar with them, please check
 
 ## Multi-Processing
 
-This module is based on [sfn-output-buffer](https://github.com/hyurl/sfn-logger),
-which support multi-processing itself, and prevent concurrency conflicts.
+This module is based on 
+[sfn-output-buffer](https://github.com/hyurl/sfn-output-buffer), which support 
+multi-processing itself, and prevent concurrency conflicts.
 
 ## Output Level
 

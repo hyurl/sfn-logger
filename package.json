@@ -1,6 +1,6 @@
 {
     "name": "sfn-logger",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "Simple Friendly Node.js Logger.",
     "main": "dist/index.js",
     "types": "src/index.ts",
@@ -37,11 +37,11 @@
         "lodash": "^4.17.10",
         "sfn-date": "^0.1.4",
         "sfn-mail": "^0.2.1",
-        "sfn-output-buffer": "^0.3.0",
+        "sfn-output-buffer": "^0.3.1",
         "tslib": "^1.9.1"
     },
     "devDependencies": {
-        "@types/lodash": "^4.14.116",
+        "@types/lodash": "^4.14.118",
         "mocha": "^5.2.0",
         "source-map-support": "^0.5.6"
     }
