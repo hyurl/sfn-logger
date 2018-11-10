@@ -2,4 +2,3 @@
 logs/
 node_modules/
 example.log
-package-lock.json
