@@ -3,7 +3,6 @@ require("source-map-support/register");
 var Logger = require("../");
 var assert = require("assert");
 var fs = require("fs");
-var date = require("sfn-date");
 
 describe("Send e-mail when file size out limit", function () {
     it("should mail log file as expected", function (done) {

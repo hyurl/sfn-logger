@@ -1,7 +1,7 @@
 var Logger = require("../");
 var assert = require("assert");
 var fs = require("fs");
-var date = require("sfn-date");
+var moment = require("moment");
 
 describe("Logger.prototype.log()", function () {
     it("should output logs as expected", function (done) {
@@ -11,7 +11,7 @@ describe("Logger.prototype.log()", function () {
         if (fs.existsSync(filename))
             fs.unlinkSync(filename);
 
-        var dateStr = date();
+        var dateStr = moment().format("YYYY-MM-DDTHH:mm:ss");
         var logger = new Logger({
             filename,
             size: 4096

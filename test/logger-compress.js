@@ -4,7 +4,7 @@ require("source-map-support/register");
 var Logger = require("../");
 var assert = require("assert");
 var fs = require("fs");
-var date = require("sfn-date");
+var moment = require("moment");
 var idealFilename = require("ideal-filename");
 
 describe("Compress when file size out limit", function () {
@@ -12,7 +12,7 @@ describe("Compress when file size out limit", function () {
         this.timeout(6000);
 
         var filename = "logs/example-will-be-compressed.log",
-            compressDir = "logs/" + date("Y-m-d"),
+            compressDir = "logs/" + moment().format("YYYY-MM-DD"),
             compressFile = compressDir + "/example-will-be-compressed.log.gz",
             log = "Everything goes fine!";
 

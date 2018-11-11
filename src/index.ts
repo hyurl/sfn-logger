@@ -4,25 +4,9 @@ import * as util from "util";
 import * as fs from "fs-extra";
 import * as OutputBuffer from "sfn-output-buffer";
 import * as Mail from "sfn-mail";
-import * as date from "sfn-date";
+import * as moment from "moment";
 import idealFilename from "ideal-filename";
 import trimLeft = require("lodash/trimStart");
-
-declare global {
-    interface ObjectConstructor {
-        assign(target: object, ...sources: any[]): any;
-    }
-}
-
-const isOldNode = parseFloat(process.version.slice(1)) < 6.0;
-const SfnMail: typeof Mail = isOldNode ? null : require("sfn-mail");
-
-enum Levels {
-    LOG,
-    INFO,
-    WARN,
-    ERROR
-}
 
 class Logger extends OutputBuffer implements Logger.Options {
     action: string;
@@ -46,19 +30,18 @@ class Logger extends OutputBuffer implements Logger.Options {
         super(options);
         this.action = action || options.action;
 
-        if (typeof SfnMail == "function") {
-            if (options.mail instanceof SfnMail) {
-                this.mailer = options.mail;
-                this.mail = options.mail["options"];
-            } else if (typeof options.mail == "object") {
-                this.mailer = new SfnMail(options.mail);
-            }
+        if (options.mail instanceof Mail) {
+            this.mailer = options.mail;
+            this.mail = options.mail["options"];
+        } else if (typeof options.mail == "object") {
+            this.mailer = new Mail(options.mail);
         }
     }
 
     /** Pushes a message to the log file. */
     push(level: string, ...msg: any[]): void {
-        if (Levels[level] < Levels[this.constructor["outputLevel"].toUpperCase()])
+        let _level = this.constructor["outputLevel"].toUpperCase();
+        if (Logger.Levels[level] < Logger.Levels[_level])
             return void 0;
 
         let _msg: string = util.format.apply(undefined, msg),
@@ -72,7 +55,7 @@ class Logger extends OutputBuffer implements Logger.Options {
         }
 
         level = level && level != "LOG" ? " [" + level + "]" : "";
-        _msg = `[${date()}]${level}${action} - ${_msg}`;
+        _msg = `[${moment().format("YYYY-MM-DDTHH:mm:ss")}]${level}${action} - ${_msg}`;
 
         super.push(_msg);
     }
@@ -99,6 +82,13 @@ class Logger extends OutputBuffer implements Logger.Options {
 }
 
 namespace Logger {
+    export enum Levels {
+        LOG,
+        INFO,
+        WARN,
+        ERROR
+    }
+
     export interface Options extends OutputBuffer.Options {
         mail?: Mail | Mail.Options & Mail.Message;
         /**
@@ -129,7 +119,7 @@ namespace Logger {
                     next();
                 });
             } else { // compress old logs
-                let dir = path.dirname(filename) + `/${date("Y-m-d")}/`,
+                let dir = path.dirname(filename) + `/${moment().format("YYYY-MM-DD")}/`,
                     basename = path.basename(filename);
 
                 fs.ensureDir(dir).then(() => {

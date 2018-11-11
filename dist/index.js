@@ -4,18 +4,10 @@ const zlib = require("zlib");
 const util = require("util");
 const fs = require("fs-extra");
 const OutputBuffer = require("sfn-output-buffer");
-const date = require("sfn-date");
+const Mail = require("sfn-mail");
+const moment = require("moment");
 const ideal_filename_1 = require("ideal-filename");
 const trimLeft = require("lodash/trimStart");
-const isOldNode = parseFloat(process.version.slice(1)) < 6.0;
-const SfnMail = isOldNode ? null : require("sfn-mail");
-var Levels;
-(function (Levels) {
-    Levels[Levels["LOG"] = 0] = "LOG";
-    Levels[Levels["INFO"] = 1] = "INFO";
-    Levels[Levels["WARN"] = 2] = "WARN";
-    Levels[Levels["ERROR"] = 3] = "ERROR";
-})(Levels || (Levels = {}));
 class Logger extends OutputBuffer {
     constructor(arg, action) {
         let options;
@@ -27,19 +19,18 @@ class Logger extends OutputBuffer {
         }
         super(options);
         this.action = action || options.action;
-        if (typeof SfnMail == "function") {
-            if (options.mail instanceof SfnMail) {
-                this.mailer = options.mail;
-                this.mail = options.mail["options"];
-            }
-            else if (typeof options.mail == "object") {
-                this.mailer = new SfnMail(options.mail);
-            }
+        if (options.mail instanceof Mail) {
+            this.mailer = options.mail;
+            this.mail = options.mail["options"];
+        }
+        else if (typeof options.mail == "object") {
+            this.mailer = new Mail(options.mail);
         }
     }
     /** Pushes a message to the log file. */
     push(level, ...msg) {
-        if (Levels[level] < Levels[this.constructor["outputLevel"].toUpperCase()])
+        let _level = this.constructor["outputLevel"].toUpperCase();
+        if (Logger.Levels[level] < Logger.Levels[_level])
             return void 0;
         let _msg = util.format.apply(undefined, msg), action = this.action ? ` [${this.action}]` : "";
         if (this.trace) {
@@ -49,7 +40,7 @@ class Logger extends OutputBuffer {
             action += " [" + stack.replace("default_1", "default") + "]";
         }
         level = level && level != "LOG" ? " [" + level + "]" : "";
-        _msg = `[${date()}]${level}${action} - ${_msg}`;
+        _msg = `[${moment().format("YYYY-MM-DDTHH:mm:ss")}]${level}${action} - ${_msg}`;
         super.push(_msg);
     }
     /** Outputs a message to the log file at LOG level. */
@@ -72,6 +63,13 @@ class Logger extends OutputBuffer {
 /** Sets the lowest level of logs that should output. */
 Logger.outputLevel = "LOG";
 (function (Logger) {
+    let Levels;
+    (function (Levels) {
+        Levels[Levels["LOG"] = 0] = "LOG";
+        Levels[Levels["INFO"] = 1] = "INFO";
+        Levels[Levels["WARN"] = 2] = "WARN";
+        Levels[Levels["ERROR"] = 3] = "ERROR";
+    })(Levels = Logger.Levels || (Logger.Levels = {}));
     Logger.Options = Object.assign({}, OutputBuffer.Options, {
         trace: false,
         limitHandler: function (filename, data, next) {
@@ -91,7 +89,7 @@ Logger.outputLevel = "LOG";
                 });
             }
             else { // compress old logs
-                let dir = path.dirname(filename) + `/${date("Y-m-d")}/`, basename = path.basename(filename);
+                let dir = path.dirname(filename) + `/${moment().format("YYYY-MM-DD")}/`, basename = path.basename(filename);
                 fs.ensureDir(dir).then(() => {
                     return ideal_filename_1.default(`${dir}${basename}.gz`, ".log.gz");
                 }).then(gzName => {
