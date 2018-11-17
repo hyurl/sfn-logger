@@ -1,9 +1,8 @@
 # SFN-Logger
 
-**Simple Friendly Node.js Logger.**
+**Simple and friendly NodeJS file logger.**
 
-This module uses [sfn-output-buffer](https://github.com/hyurl/sfn-output-buffer)
-to log contents in a synchronous way, but actually it's handled asynchronously.
+*This documentation is for sfn-logger 0.4.x, old versions are deprecated.*
 
 ## Install
 
@@ -17,36 +16,42 @@ npm install sfn-logger --save
 const Logger = require("sfn-logger");
 
 var logger = new Logger("example.log");
-logger.size = 1024; // 1 Kb
-logger.fileSize = 1024 * 1024; // 1 Mb
 
-var count = 0,
-    timer = setInterval(() => {
-        logger.log("Hello, World!");
-
-        count += 1;
-        if (count === 10) {
-            clearInterval(timer);
-            logger.close();
-        }
-    }, 1000);
+logger.log("Hello, World!");
 ```
 
-## API
+## Create Logger
 
-- `new Logger(filename: string, action?: string)`
-- `new Logger(options: object, action?: string)`
-    - `options` An object configures the logger, supports:
-        - `ttl` Time to live, default is `1000`ms.
-        - `size` Buffer size, if set, then `ttl` will be ignored.
-        - `filename` Flush buffer to a disk file.
-        - `fileSize` Maximum size of the output file.
-        - `mail` An object configures a new Mail instance (from 
+- `new Logger(filename: string)` Creates a logger instance with a filename.
+- `new Logger(options: Logger.Options)` Creates a logger instance with options.
+- `Logger.Options`
+    - `ttl?: number` How much time should the output buffer keep contents before
+        flushing, default value is `1000` ms.
+    - `size?: number` How much size should the output buffer keep contents 
+        before flushing. This option conflicts with `ttl`, set only one of them.
+        For data integrity, the real size of flushing data may be smaller than
+        the setting value.
+    - `filename: string` Writes the contents to the target file.
+    - `fileSize?: number` The size of the log file, when up to limit, logs will
+        be compressed or sent via e-mail, default value is `2097152` bytes (2 Mb). 
+        For data integrity, the real size of the file may be smaller than the 
+        setting value.
+    - `dateFormat?: string` The format of prefix date-time value, default value 
+        is `YYYY-MM-DDTHH:mm:ss`, used by [moment](https://momentjs.com).
+    - `trace?: boolean` The log message should contain the filename and position
+        of where triggers the logging operation, `false` by default.
+    - `toConsole?: boolean` The log will also output to the console, `false` by 
+        default.
+    - `outputLevel?: number` Sets the minimum level of logs that should be 
+        output to the file, default value is `Logger.Levels.DEBUG`.
+    - `mail` An object configures a new Mail instance (from 
             [sfn-mail](https://github.com/hyurl/sfn-mail)) or a existing Mail 
             instance.
-        - `trace` If set, the log will trace and output the file and position 
-            where triggers logging.
-    - `[action]` An optional action name.
+- `Logger.Levels` An enum object contains number from `1` - `4`
+    - `DEBUG`
+    - `INFO`
+    - `WARN`
+    - `ERROR`
 
 ```javascript
 // Simplest way to create a logger:
@@ -78,27 +83,37 @@ var logger = new Logger({
 });
 ```
 
-If you don't set the `mail`, when file's size up to limit, its contents will 
-be compressed to GZip and stored in a directory named according to date.
+If you don't set the `mail` option, when file's size up to limit, its contents 
+will be compressed to a GZip file and stored in a directory named according to
+date.
 
 ## Familiar Methods
 
-- `logger.log()` Outputs a message to the log file at LOG level.
-- `logger.info()` Outputs a message to the log file at INFO level.
-- `logger.warn()` Outputs a message to the log file at WARN level.
-- `logger.error()` Outputs a message to the log file at ERROR level.
+- `logger.log()` Logs a message on DEBUG level (alias `logger.debug()`).
+- `logger.info()` Logs a message on INFO level.
+- `logger.warn()` Logs a message on WARN level.
+- `logger.error()` Logs a message on ERROR level.
 
 These methods' usage are exactly the same as `console`'s, if you're not 
 familiar with them, please check 
 [https://nodejs.org/dist/latest-v8.x/docs/api/console.html](https://nodejs.org/dist/latest-v8.x/docs/api/console.html).
 
-## Multi-Processing
+## Multi-Processing Scenario
 
-This module is based on 
-[sfn-output-buffer](https://github.com/hyurl/sfn-output-buffer), which support 
-multi-processing itself, and prevent concurrency conflicts.
+Powered by [open-channel](https://github.com/hyurl/open-channel), this package 
+is safe in multi-processing scenario, and automatically prevent concurrency 
+conflicts.
 
-## Output Level
+## Close Logger
 
-Setting the static property `Logger.outputLevel` to set the lowest level of logs 
-that should output. It's `LOG` by default, means output all levels.
+You can called the method `logger.close()` to close the logger, however, due to 
+using *open-channel*, which serves an internal IPC server that cannot be closed,
+the program will not be able to exit automatically as usual, you have to 
+explicitly calling `process.exit()` in case to terminate the program.
+
+```javascript
+// wait and close the logger in 500 ms, then terminate the program.
+logger.close(() => {
+    process.exit();
+}, 500);
+```

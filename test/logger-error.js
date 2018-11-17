@@ -1,6 +1,7 @@
 var Logger = require("../");
 var assert = require("assert");
 var fs = require("fs");
+var os = require("os");
 var moment = require("moment");
 
 describe("Logger.prototype.error()", function () {
@@ -18,12 +19,15 @@ describe("Logger.prototype.error()", function () {
         });
 
         logger.error(log);
-        logger.close();
 
-        setTimeout(function () {
-            // console.log(logger.queue)
-            assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [ERROR] - ${log}${logger.EOL}`);
-            done();
-        }, 500);
+        logger.close(() => {
+            try {
+                logger.close();
+                assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [ERROR] - ${log}${os.EOL}`);
+                done();
+            } catch (err) {
+                done(err);
+            }
+        }, 200);
     });
 });

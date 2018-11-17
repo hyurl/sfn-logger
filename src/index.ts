@@ -1,25 +1,40 @@
 import * as path from "path";
 import * as zlib from "zlib";
 import * as util from "util";
+import * as os from "os";
+import * as net from "net";
 import * as fs from "fs-extra";
-import * as OutputBuffer from "sfn-output-buffer";
 import * as Mail from "sfn-mail";
 import * as moment from "moment";
 import idealFilename from "ideal-filename";
 import trimLeft = require("lodash/trimStart");
+import sortBy = require("lodash/sortBy");
+import hash = require("string-hash");
+import Queue from "dynamic-queue";
+import openChannel, { ProcessChannel } from "open-channel";
+import { send, receive } from "./util";
 
-class Logger extends OutputBuffer implements Logger.Options {
-    action: string;
+class Logger implements Logger.Options {
+    ttl: number;
+    size: number;
+    filename: string;
+    fileSize: number;
+    dateFormat: string;
     trace: boolean;
-    readonly mail: Mail.Options & Mail.Message;
-    readonly mailer: Mail;
+    toConsole: boolean;
+    outputLevel: number;
 
-    /** Sets the lowest level of logs that should output. */
-    static outputLevel: string = "LOG";
+    private mailer: Mail;
+    private timer: NodeJS.Timer = null;
+    private buffer: [number, string][] = [];
+    private byteLength = 0;
+    private queue = new Queue();
+    private channel: ProcessChannel;
+    private socket: net.Socket;
 
-    constructor(options?: Logger.Options, action?: string);
-    constructor(filename: string, action?: string);
-    constructor(arg, action: string) {
+    constructor(filename: string);
+    constructor(options?: Logger.Options);
+    constructor(arg) {
         let options: Logger.Options;
         if (typeof arg == "string") {
             options = { filename: arg };
@@ -27,121 +42,266 @@ class Logger extends OutputBuffer implements Logger.Options {
             options = arg;
         }
 
-        super(options);
-        this.action = action || options.action;
+        Object.assign(this, (<typeof Logger>this.constructor).Options, options);
 
-        if (options.mail instanceof Mail) {
-            this.mailer = options.mail;
-            this.mail = options.mail["options"];
-        } else if (typeof options.mail == "object") {
-            this.mailer = new Mail(options.mail);
+        // Use open-channel to store log data between parallel processes and 
+        // prevent concurrency control issues.
+        this.channel = openChannel(String(hash(this.filename)), socket => {
+            let eolLength = Buffer.from(os.EOL).byteLength;
+
+            socket.on("data", buf => {
+                for (let [time, log] of receive(buf)) {
+                    log = `[${moment(time).format(this.dateFormat)}]${log}`;
+                    this.buffer.push([time, log]);
+                    this.byteLength += Buffer.byteLength(log) + eolLength;
+
+                    if (this.size) {
+                        this.byteLength >= this.size && this.flush();
+                    }
+                }
+            });
+        });
+        this.socket = this.channel.connect();
+
+        if (this.size) {
+            this.ttl = undefined;
+
+            process.on("beforeExit", (code) => {
+                if (!code) {
+                    this.close();
+                }
+            });
+        } else {
+            let next = () => {
+                this.timer = setTimeout(() => {
+                    this.flush(next);
+                }, this.ttl);
+            };
+
+            next();
         }
     }
 
-    /** Pushes a message to the log file. */
-    push(level: string, ...msg: any[]): void {
-        let _level = this.constructor["outputLevel"].toUpperCase();
-        if (Logger.Levels[level] < Logger.Levels[_level])
-            return void 0;
+    set mail(value: Mail | (Mail.Options & Mail.Message)) {
+        if (value instanceof Mail) {
+            this.mailer = value;
+        } else if (typeof value == "object") {
+            this.mailer = new Mail(value);
+        }
+    }
 
-        let _msg: string = util.format.apply(undefined, msg),
-            action: string = this.action ? ` [${this.action}]` : "";
+    get mail() {
+        return this.mailer;
+    }
+
+    /** Whether the logger has be closed. */
+    get closed() {
+        return this.socket.destroyed;
+    }
+
+    /**
+     * Closes the logger safely, flushes buffer before destroying.
+     * @param waitTime Wait file output before actually closing the logger, 
+     *  default value is `10`ms.
+     */
+    close(cb?: () => void, waitTime?: number): void {
+        this.timer ? clearTimeout(this.timer) : null;
+        setTimeout(() => {
+            this.flush(() => {
+                this.closed || this.socket.destroy();
+                cb && cb();
+            });
+        }, waitTime || 10);
+    }
+
+    /** An alias of `debug()`. */
+    log(...msg: any[]): void {
+        return this.push(Logger.Levels.DEBUG, ...msg);
+    }
+
+    /** Logs a message on DEBUG level. */
+    debug(...msg: any[]): void {
+        return this.push(Logger.Levels.DEBUG, ...msg);
+    }
+
+    /** Logs a message on INFO level. */
+    info(...msg: any[]): void {
+        return this.push(Logger.Levels.INFO, ...msg);
+    }
+
+    /** Logs a message on WARN level. */
+    warn(...msg: any[]): void {
+        return this.push(Logger.Levels.WARN, ...msg);
+    }
+
+    /** Logs a message on ERROR level. */
+    error(...msg: any[]): void {
+        return this.push(Logger.Levels.ERROR, ...msg);
+    }
+
+    private push(level: number, ...msg: any[]): void {
+        let _level = " [" + Logger.Levels[level] + "]",
+            time = Date.now(),
+            log: string = util.format.apply(undefined, msg),
+            stack: string = "";
 
         if (this.trace) {
             let target: any = {};
             Error.captureStackTrace(target);
-            let stack = trimLeft((<string>target.stack).split("\n")[3]).slice(3);
-            action += " [" + stack.replace("default_1", "default") + "]";
+            stack = trimLeft((<string>target.stack).split("\n")[3]).slice(3);
+            stack = " [" + stack.replace("default_1", "default") + "]";
         }
 
-        level = level && level != "LOG" ? " [" + level + "]" : "";
-        _msg = `[${moment().format("YYYY-MM-DDTHH:mm:ss")}]${level}${action} - ${_msg}`;
+        log = `${_level}${stack} - ${log}`;
 
-        super.push(_msg);
+        // transfer log via open-channel.
+        level >= this.outputLevel && this.socket.write(send(time, log));
+
+        if (this.toConsole) {
+            let method = Logger.Levels[level].toLowerCase();
+            console[method](`[${moment(time).format(this.dateFormat)}]${log}`);
+        }
     }
 
-    /** Outputs a message to the log file at LOG level. */
-    log(...msg: any[]): void {
-        return this.push("LOG", ...msg);
+    private flush(cb?: () => void): void {
+        cb = cb || (() => { });
+
+        if (this.buffer.length === 0)
+            return cb();
+
+        this.queue.push(async (next) => {
+            let callback = () => {
+                next();
+                cb();
+            };
+
+            try {
+                let data = this.getAndClean();
+
+                if (await fs.pathExists(this.filename)) {
+                    let stat = await fs.stat(this.filename),
+                        size = stat.size + Buffer.byteLength(data);
+
+                    if (size < this.fileSize) {
+                        await fs.appendFile(this.filename, data);
+                        callback();
+                    } else {
+                        await this.relocateOldLogs();
+                        await fs.writeFile(this.filename, data, "utf8");
+                        callback();
+                    }
+                } else {
+                    await fs.ensureDir(path.dirname(this.filename));
+                    await fs.writeFile(this.filename, data, "utf8");
+                    callback();
+                }
+            } catch (err) {
+                this.error(err);
+                callback();
+            }
+        });
     }
 
-    /** Outputs a message to the log file at INFO level. */
-    info(...msg: any[]): void {
-        return this.push("INFO", ...msg);
+    private getAndClean(): string {
+        let data = sortBy(this.buffer, 0).map(buf => buf[1] + os.EOL).join("");
+        this.buffer = [];
+        this.byteLength = 0;
+        return data;
     }
 
-    /** Outputs a message to the log file at WARN level. */
-    warn(...msg: any[]): void {
-        return this.push("WARN", ...msg);
-    }
+    private async relocateOldLogs(): Promise<any> {
+        if (this.mail) { // Send old logs via email to the receiver.
+            if (!this.mailer["message"].text)
+                this.mailer.text("Please review the attachment.");
+            if (!this.mailer["message"].html)
+                this.mailer.html("<p>Please review the attachment.</p>");
 
-    /** Outputs a message to the log file at ERROR level. */
-    error(...msg: any[]): void {
-        return this.push("ERROR", ...msg);
+            // reset attachment.
+            this.mailer["message"].attachments = [];
+
+            return this.mailer.attachment(this.filename).send();
+        } else { // compress old logs
+            let dir = path.dirname(this.filename)
+                + `/${moment().format("YYYY-MM-DD")}`;
+
+            await fs.ensureDir(dir);
+
+            let basename = path.basename(this.filename),
+                ext = path.extname(this.filename) + ".gz",
+                gzName = await idealFilename(`${dir}/${basename}.gz`, ext),
+                gzip = zlib.createGzip(),
+                input = fs.createReadStream(this.filename),
+                output = fs.createWriteStream(gzName);
+
+            return await new Promise(resolve => {
+                output.once("close", () => resolve());
+                input.pipe(gzip).pipe(output);
+            });
+        }
     }
 }
 
 namespace Logger {
     export enum Levels {
-        LOG,
+        DEBUG = 1,
         INFO,
         WARN,
         ERROR
     }
 
-    export interface Options extends OutputBuffer.Options {
-        mail?: Mail | Mail.Options & Mail.Message;
+    export interface Options {
         /**
-         * If set, the log will trace and output the file and position where 
-         * triggers logging.
+         * How much time should the output buffer keep contents before flushing,
+         * default value is `1000` ms.
+         */
+        ttl?: number;
+        /**
+         * How much size should the output buffer keep contents before flushing.
+         * This option conflicts with `ttl`, set only one of them. For data 
+         * integrity, the real size of flushing data may be smaller than the 
+         * setting value.
+         */
+        size?: number;
+        /** Writes log contents to the target file. */
+        filename: string;
+        /**
+         * The size of the log file, when up to limit, logs will be compressed
+         * or sent via e-mail, default value is `2097152` bytes (2 Mb). For data 
+         * integrity, the real size of the file may be smaller than the setting 
+         * value.
+         */
+        fileSize?: number;
+        /**
+         * The format of prefix date-time value, default value is 
+         * `YYYY-MM-DDTHH:mm:ss`.
+         */
+        dateFormat?: string;
+        /**
+         * The log message should contain the filename and position of where 
+         * triggers the logging operation, `false` by default.
          */
         trace?: boolean;
-        action?: string;
+        /** The log will also output to the console, `false` by default. */
+        toConsole?: boolean;
+        /**
+         * Sets the minimum level of logs that should be output to the file,
+         * default value is `Logger.Levels.DEBUG`.
+         */
+        outputLevel?: number;
+        mail?: Mail | (Mail.Options & Mail.Message);
     }
 
-    export const Options: Options = Object.assign({}, OutputBuffer.Options, {
+    export const Options: Options = {
+        ttl: 1000,
+        size: undefined,
+        filename: undefined,
+        fileSize: 1024 * 1024 * 2, // 2Mb
+        dateFormat: "YYYY-MM-DDTHH:mm:ss",
         trace: false,
-        limitHandler: function (filename, data, next) {
-            let $this: Logger = this;
-            if ($this.mail) { // Send old logs as email to the receiver.
-                if (!$this.mailer["message"].text)
-                    $this.mailer.text("Please review the attachment.");
-                if (!$this.mailer["message"].html)
-                    $this.mailer.html("<p>Please review the attachment.</p>");
-
-                // reset attachments.
-                $this.mailer["message"].attachments = [];
-
-                $this.mailer.attachment(filename).send().then(() => {
-                    next();
-                }).catch(err => {
-                    $this.error(err);
-                    next();
-                });
-            } else { // compress old logs
-                let dir = path.dirname(filename) + `/${moment().format("YYYY-MM-DD")}/`,
-                    basename = path.basename(filename);
-
-                fs.ensureDir(dir).then(() => {
-                    return idealFilename(`${dir}${basename}.gz`, ".log.gz");
-                }).then(gzName => {
-                    // compress to Gzip.
-                    let gzip = zlib.createGzip(),
-                        input = fs.createReadStream(filename),
-                        output = fs.createWriteStream(gzName);
-
-                    input.pipe(gzip).pipe(output);
-                    output.on("close", () => next());
-                }).catch(err => {
-                    this.error(err);
-                    next();
-                });
-            }
-        },
-        errorHandler: function (err) {
-            this.error(err);
-        }
-    });
+        toConsole: false,
+        outputLevel: Logger.Levels.DEBUG,
+        mail: undefined
+    };
 }
 
 export = Logger;

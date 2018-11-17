@@ -9,8 +9,6 @@ var idealFilename = require("ideal-filename");
 
 describe("Compress when file size out limit", function () {
     it("should compress log file as expected", function (done) {
-        this.timeout(6000);
-
         var filename = "logs/example-will-be-compressed.log",
             compressDir = "logs/" + moment().format("YYYY-MM-DD"),
             compressFile = compressDir + "/example-will-be-compressed.log.gz",
@@ -25,16 +23,19 @@ describe("Compress when file size out limit", function () {
                 size: 512,
                 fileSize: 4096
             });
-    
+
             for (var i = 0; i < 200; i++) {
                 logger.log(log + " - " + (i + 1));
             }
-    
-            setTimeout(function () {
-                assert.ok(fs.existsSync(_filename));
-                done();
-                // logger.close();
-            }, 1500);
+
+            logger.close(() => {
+                try {
+                    assert.ok(fs.existsSync(_filename));
+                    done();
+                } catch (err) {
+                    done(err);
+                }
+            }, 200);
         });
     });
 });
