@@ -14,6 +14,7 @@ const hash = require("string-hash");
 const dynamic_queue_1 = require("dynamic-queue");
 const open_channel_1 = require("open-channel");
 const util_1 = require("./util");
+const traceHacker = Symbol("traceHacker");
 class Logger {
     constructor(arg) {
         this.timer = null;
@@ -110,13 +111,25 @@ class Logger {
     error(...msg) {
         return this.push(Logger.Levels.ERROR, ...msg);
     }
+    /**
+     * Temporarily ignores trace option and set stack message manually,
+     * auto-recovered once any log method is called.
+     */
+    hackTrace(stack) {
+        this[traceHacker] = { stack, trace: this.trace };
+        this.trace = false;
+    }
     push(level, ...msg) {
-        let _level = " [" + Logger.Levels[level] + "]", time = Date.now(), log = util.format.apply(undefined, msg), stack = "";
+        let _level = " [" + Logger.Levels[level] + "]", time = Date.now(), log = util.format.apply(undefined, msg), stack = this[traceHacker] ? this[traceHacker].stack : "";
         if (this.trace) {
             let target = {};
             Error.captureStackTrace(target);
             stack = trimLeft(target.stack.split("\n")[3]).slice(3);
             stack = " [" + stack.replace("default_1", "default") + "]";
+        }
+        else if (this[traceHacker]) {
+            this.trace = this[traceHacker].trace;
+            delete this[traceHacker];
         }
         log = `${_level}${stack} - ${log}`;
         // transfer log via open-channel.

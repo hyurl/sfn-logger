@@ -14,6 +14,8 @@ import Queue from "dynamic-queue";
 import openChannel, { ProcessChannel } from "open-channel";
 import { send, receive } from "./util";
 
+const traceHacker = Symbol("traceHacker");
+
 class Logger implements Logger.Options {
     ttl: number;
     size: number;
@@ -139,17 +141,29 @@ class Logger implements Logger.Options {
         return this.push(Logger.Levels.ERROR, ...msg);
     }
 
+    /**
+     * Temporarily ignores trace option and set stack message manually, 
+     * auto-recovered once any log method is called.
+     */
+    hackTrace(stack: string): void {
+        this[traceHacker] = { stack, trace: this.trace };
+        this.trace = false;
+    }
+
     private push(level: number, ...msg: any[]): void {
         let _level = " [" + Logger.Levels[level] + "]",
             time = Date.now(),
             log: string = util.format.apply(undefined, msg),
-            stack: string = "";
+            stack: string = this[traceHacker] ? this[traceHacker].stack : "";
 
         if (this.trace) {
             let target: any = {};
             Error.captureStackTrace(target);
             stack = trimLeft((<string>target.stack).split("\n")[3]).slice(3);
             stack = " [" + stack.replace("default_1", "default") + "]";
+        } else if (this[traceHacker]) {
+            this.trace = this[traceHacker].trace;
+            delete this[traceHacker];
         }
 
         log = `${_level}${stack} - ${log}`;
