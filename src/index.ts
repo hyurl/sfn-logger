@@ -154,7 +154,9 @@ class Logger implements Logger.Options {
         let _level = " [" + Logger.Levels[level] + "]",
             time = Date.now(),
             log: string = util.format.apply(undefined, msg),
-            stack: string = this[traceHacker] ? this[traceHacker].stack : "";
+            stack: string = this[traceHacker]
+                ? (" " + this[traceHacker].stack)
+                : "";
 
         if (this.trace) {
             let target: any = {};

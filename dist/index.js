@@ -120,7 +120,9 @@ class Logger {
         this.trace = false;
     }
     push(level, ...msg) {
-        let _level = " [" + Logger.Levels[level] + "]", time = Date.now(), log = util.format.apply(undefined, msg), stack = this[traceHacker] ? this[traceHacker].stack : "";
+        let _level = " [" + Logger.Levels[level] + "]", time = Date.now(), log = util.format.apply(undefined, msg), stack = this[traceHacker]
+            ? (" " + this[traceHacker].stack)
+            : "";
         if (this.trace) {
             let target = {};
             Error.captureStackTrace(target);
