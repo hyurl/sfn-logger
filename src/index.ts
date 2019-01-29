@@ -12,7 +12,7 @@ import sortBy = require("lodash/sortBy");
 import hash = require("string-hash");
 import Queue from "dynamic-queue";
 import openChannel, { ProcessChannel } from "open-channel";
-import { send, receive } from "./util";
+import { send, receive } from "bsp";
 
 const traceHacker = Symbol("traceHacker");
 
@@ -50,9 +50,10 @@ class Logger implements Logger.Options {
         // prevent concurrency control issues.
         this.channel = openChannel(String(hash(this.filename)), socket => {
             let eolLength = Buffer.from(os.EOL).byteLength;
+            let remains: Buffer[] = [];
 
             socket.on("data", buf => {
-                for (let [time, log] of receive(buf)) {
+                for (let [time, log] of receive<[number, string]>(buf, remains)) {
                     log = `[${moment(time).format(this.dateFormat)}]${log}`;
                     this.buffer.push([time, log]);
                     this.byteLength += Buffer.byteLength(log) + eolLength;

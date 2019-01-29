@@ -13,7 +13,7 @@ const sortBy = require("lodash/sortBy");
 const hash = require("string-hash");
 const dynamic_queue_1 = require("dynamic-queue");
 const open_channel_1 = require("open-channel");
-const util_1 = require("./util");
+const bsp_1 = require("bsp");
 const traceHacker = Symbol("traceHacker");
 class Logger {
     constructor(arg) {
@@ -33,8 +33,9 @@ class Logger {
         // prevent concurrency control issues.
         this.channel = open_channel_1.default(String(hash(this.filename)), socket => {
             let eolLength = Buffer.from(os.EOL).byteLength;
+            let remains = [];
             socket.on("data", buf => {
-                for (let [time, log] of util_1.receive(buf)) {
+                for (let [time, log] of bsp_1.receive(buf, remains)) {
                     log = `[${moment(time).format(this.dateFormat)}]${log}`;
                     this.buffer.push([time, log]);
                     this.byteLength += Buffer.byteLength(log) + eolLength;
@@ -135,7 +136,7 @@ class Logger {
         }
         log = `${_level}${stack} - ${log}`;
         // transfer log via open-channel.
-        level >= this.outputLevel && this.socket.write(util_1.send(time, log));
+        level >= this.outputLevel && this.socket.write(bsp_1.send(time, log));
         if (this.toConsole) {
             let method = Logger.Levels[level].toLowerCase();
             console[method](`[${moment(time).format(this.dateFormat)}]${log}`);
