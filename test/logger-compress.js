@@ -9,6 +9,7 @@ var idealFilename = require("ideal-filename");
 
 describe("Compress when file size out limit", function () {
     it("should compress log file as expected", function (done) {
+        this.timeout(3000);
         var filename = "logs/example-will-be-compressed.log",
             compressDir = "logs/" + moment().format("YYYY-MM-DD"),
             compressFile = compressDir + "/example-will-be-compressed.log.gz",
