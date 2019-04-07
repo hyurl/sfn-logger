@@ -50,10 +50,10 @@ class Logger implements Logger.Options {
         // prevent concurrency control issues.
         this.channel = openChannel(String(hash(this.filename)), socket => {
             let eolLength = Buffer.from(os.EOL).byteLength;
-            let remains: Buffer[] = [];
+            let temp: Buffer[] = [];
 
             socket.on("data", buf => {
-                for (let [time, log] of receive<[number, string]>(buf, remains)) {
+                for (let [time, log] of receive<[number, string]>(buf, temp)) {
                     log = `[${moment(time).format(this.dateFormat)}]${log}`;
                     this.buffer.push([time, log]);
                     this.byteLength += Buffer.byteLength(log) + eolLength;

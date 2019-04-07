@@ -33,9 +33,9 @@ class Logger {
         // prevent concurrency control issues.
         this.channel = open_channel_1.default(String(hash(this.filename)), socket => {
             let eolLength = Buffer.from(os.EOL).byteLength;
-            let remains = [];
+            let temp = [];
             socket.on("data", buf => {
-                for (let [time, log] of bsp_1.receive(buf, remains)) {
+                for (let [time, log] of bsp_1.receive(buf, temp)) {
                     log = `[${moment(time).format(this.dateFormat)}]${log}`;
                     this.buffer.push([time, log]);
                     this.byteLength += Buffer.byteLength(log) + eolLength;
