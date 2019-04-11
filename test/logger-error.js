@@ -20,14 +20,16 @@ describe("Logger.prototype.error()", function () {
 
         logger.error(log);
 
-        logger.close(() => {
-            try {
-                logger.close();
-                assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [ERROR] - ${log}${os.EOL}`);
-                done();
-            } catch (err) {
-                done(err);
-            }
+        setTimeout(() => {
+            logger.close(() => {
+                try {
+                    logger.close();
+                    assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [ERROR] - ${log}${os.EOL}`);
+                    done();
+                } catch (err) {
+                    done(err);
+                }
+            });
         }, 200);
     });
 });

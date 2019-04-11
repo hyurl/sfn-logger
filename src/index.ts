@@ -15,6 +15,7 @@ import openChannel, { ProcessChannel } from "open-channel";
 import { send, receive } from "bsp";
 
 const traceHacker = Symbol("traceHacker");
+const eolLength = Buffer.from(os.EOL).byteLength;
 
 class Logger implements Logger.Options {
     ttl: number;
@@ -29,10 +30,11 @@ class Logger implements Logger.Options {
     private mailer: Mail;
     private timer: NodeJS.Timer = null;
     private buffer: [number, string][] = [];
-    private byteLength = 0;
+    private bufferSize = 0;
     private queue = new Queue();
     private channel: ProcessChannel;
     private socket: net.Socket;
+    private shouldTransmit = true;
 
     constructor(filename: string);
     constructor(options?: Logger.Options);
@@ -49,18 +51,12 @@ class Logger implements Logger.Options {
         // Use open-channel to store log data between parallel processes and 
         // prevent concurrency control issues.
         this.channel = openChannel(String(hash(this.filename)), socket => {
-            let eolLength = Buffer.from(os.EOL).byteLength;
             let temp: Buffer[] = [];
 
+            this.shouldTransmit = false;
             socket.on("data", buf => {
                 for (let [time, log] of receive<[number, string]>(buf, temp)) {
-                    log = `[${moment(time).format(this.dateFormat)}]${log}`;
-                    this.buffer.push([time, log]);
-                    this.byteLength += Buffer.byteLength(log) + eolLength;
-
-                    if (this.size) {
-                        this.byteLength >= this.size && this.flush();
-                    }
+                    this.memorize(time, log);
                 }
             });
         });
@@ -104,17 +100,24 @@ class Logger implements Logger.Options {
 
     /**
      * Closes the logger safely, flushes buffer before destroying.
-     * @param waitTime Wait file output before actually closing the logger, 
-     *  default value is `10`ms.
      */
-    close(cb?: () => void, waitTime?: number): void {
-        this.timer ? clearTimeout(this.timer) : null;
-        setTimeout(() => {
+    close(): Promise<void>;
+    close(cb: () => void): void;
+    close(cb?: () => void): void | Promise<void> {
+        let promise = new Promise((resolve) => {
             this.flush(() => {
                 this.closed || this.socket.destroy();
-                cb && cb();
+                resolve();
             });
-        }, waitTime || 10);
+        }) as Promise<void>;
+
+        this.timer && clearTimeout(this.timer);
+
+        if (cb) {
+            promise.then(cb);
+        } else {
+            return promise;
+        }
     }
 
     /** An alias of `debug()`. */
@@ -171,8 +174,14 @@ class Logger implements Logger.Options {
 
         log = `${_level}${stack} - ${log}`;
 
-        // transfer log via open-channel.
-        level >= this.outputLevel && this.socket.write(send(time, log));
+        if (level >= this.outputLevel) {
+            if (this.shouldTransmit) {
+                // transmit the log via the channel.
+                this.socket.write(send(time, log));
+            } else {
+                this.memorize(time, log);
+            }
+        }
 
         if (this.toConsole) {
             let method = Logger.Levels[level].toLowerCase();
@@ -219,10 +228,20 @@ class Logger implements Logger.Options {
         });
     }
 
+    private memorize(time: number, log: string) {
+        log = `[${moment(time).format(this.dateFormat)}]${log}`;
+        this.buffer.push([time, log]);
+        this.bufferSize += Buffer.byteLength(log) + eolLength;
+
+        if (this.size) {
+            this.bufferSize >= this.size && this.flush();
+        }
+    }
+
     private getAndClean(): string {
         let data = sortBy(this.buffer, 0).map(buf => buf[1] + os.EOL).join("");
         this.buffer = [];
-        this.byteLength = 0;
+        this.bufferSize = 0;
         return data;
     }
 
@@ -250,8 +269,8 @@ class Logger implements Logger.Options {
                 input = fs.createReadStream(this.filename),
                 output = fs.createWriteStream(gzName);
 
-            return await new Promise(resolve => {
-                output.once("close", () => resolve());
+            return new Promise(resolve => {
+                output.once("close", resolve);
                 input.pipe(gzip).pipe(output);
             });
         }
@@ -298,7 +317,7 @@ namespace Logger {
          * triggers the logging operation, `false` by default.
          */
         trace?: boolean;
-        /** The log will also output to the console, `false` by default. */
+        /** The log should also be output to the console, `false` by default. */
         toConsole?: boolean;
         /**
          * Sets the minimum level of logs that should be output to the file,

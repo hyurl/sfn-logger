@@ -15,12 +15,14 @@ const dynamic_queue_1 = require("dynamic-queue");
 const open_channel_1 = require("open-channel");
 const bsp_1 = require("bsp");
 const traceHacker = Symbol("traceHacker");
+const eolLength = Buffer.from(os.EOL).byteLength;
 class Logger {
     constructor(arg) {
         this.timer = null;
         this.buffer = [];
-        this.byteLength = 0;
+        this.bufferSize = 0;
         this.queue = new dynamic_queue_1.default();
+        this.shouldTransmit = true;
         let options;
         if (typeof arg == "string") {
             options = { filename: arg };
@@ -32,16 +34,11 @@ class Logger {
         // Use open-channel to store log data between parallel processes and 
         // prevent concurrency control issues.
         this.channel = open_channel_1.default(String(hash(this.filename)), socket => {
-            let eolLength = Buffer.from(os.EOL).byteLength;
             let temp = [];
+            this.shouldTransmit = false;
             socket.on("data", buf => {
                 for (let [time, log] of bsp_1.receive(buf, temp)) {
-                    log = `[${moment(time).format(this.dateFormat)}]${log}`;
-                    this.buffer.push([time, log]);
-                    this.byteLength += Buffer.byteLength(log) + eolLength;
-                    if (this.size) {
-                        this.byteLength >= this.size && this.flush();
-                    }
+                    this.memorize(time, log);
                 }
             });
         });
@@ -78,19 +75,20 @@ class Logger {
     get closed() {
         return this.socket.destroyed;
     }
-    /**
-     * Closes the logger safely, flushes buffer before destroying.
-     * @param waitTime Wait file output before actually closing the logger,
-     *  default value is `10`ms.
-     */
-    close(cb, waitTime) {
-        this.timer ? clearTimeout(this.timer) : null;
-        setTimeout(() => {
+    close(cb) {
+        let promise = new Promise((resolve) => {
             this.flush(() => {
                 this.closed || this.socket.destroy();
-                cb && cb();
+                resolve();
             });
-        }, waitTime || 10);
+        });
+        this.timer && clearTimeout(this.timer);
+        if (cb) {
+            promise.then(cb);
+        }
+        else {
+            return promise;
+        }
     }
     /** An alias of `debug()`. */
     log(...msg) {
@@ -135,8 +133,15 @@ class Logger {
             delete this[traceHacker];
         }
         log = `${_level}${stack} - ${log}`;
-        // transfer log via open-channel.
-        level >= this.outputLevel && this.socket.write(bsp_1.send(time, log));
+        if (level >= this.outputLevel) {
+            if (this.shouldTransmit) {
+                // transmit the log via the channel.
+                this.socket.write(bsp_1.send(time, log));
+            }
+            else {
+                this.memorize(time, log);
+            }
+        }
         if (this.toConsole) {
             let method = Logger.Levels[level].toLowerCase();
             console[method](`[${moment(time).format(this.dateFormat)}]${log}`);
@@ -177,10 +182,18 @@ class Logger {
             }
         }));
     }
+    memorize(time, log) {
+        log = `[${moment(time).format(this.dateFormat)}]${log}`;
+        this.buffer.push([time, log]);
+        this.bufferSize += Buffer.byteLength(log) + eolLength;
+        if (this.size) {
+            this.bufferSize >= this.size && this.flush();
+        }
+    }
     getAndClean() {
         let data = sortBy(this.buffer, 0).map(buf => buf[1] + os.EOL).join("");
         this.buffer = [];
-        this.byteLength = 0;
+        this.bufferSize = 0;
         return data;
     }
     relocateOldLogs() {
@@ -199,8 +212,8 @@ class Logger {
                     + `/${moment().format("YYYY-MM-DD")}`;
                 yield fs.ensureDir(dir);
                 let basename = path.basename(this.filename), ext = path.extname(this.filename) + ".gz", gzName = yield ideal_filename_1.default(`${dir}/${basename}.gz`, ext), gzip = zlib.createGzip(), input = fs.createReadStream(this.filename), output = fs.createWriteStream(gzName);
-                return yield new Promise(resolve => {
-                    output.once("close", () => resolve());
+                return new Promise(resolve => {
+                    output.once("close", resolve);
                     input.pipe(gzip).pipe(output);
                 });
             }

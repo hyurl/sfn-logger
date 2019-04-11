@@ -23,7 +23,8 @@ describe("new Logger()", function () {
                 trace: false,
                 toConsole: false,
                 outputLevel: 1,
-                byteLength: 0,
+                bufferSize: 0,
+                shouldTransmit: true,
                 dateFormat: "YYYY-MM-DDTHH:mm:ss"
             });
 
@@ -54,13 +55,10 @@ describe("new Logger()", function () {
                 trace: false,
                 toConsole: false,
                 outputLevel: 1,
-                byteLength: 0,
+                bufferSize: 0,
+                shouldTransmit: true,
                 dateFormat: "YYYY-MM-DDTHH:mm:ss"
             });
-
-            setTimeout(() => {
-                process.exit();
-            }, 500);
         });
     });
 });

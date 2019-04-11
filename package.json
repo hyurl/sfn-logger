@@ -1,6 +1,6 @@
 {
     "name": "sfn-logger",
-    "version": "0.4.6",
+    "version": "0.5.0",
     "description": "Simple Friendly Node.js Logger.",
     "main": "dist/index.js",
     "types": "src/index.ts",
@@ -8,7 +8,7 @@
         "node": ">=6.0"
     },
     "scripts": {
-        "test": "mocha"
+        "test": "mocha --exit"
     },
     "keywords": [
         "sfn",

@@ -40,8 +40,8 @@ logger.log("Hello, World!");
         is `YYYY-MM-DDTHH:mm:ss`, used by [moment](https://momentjs.com).
     - `trace?: boolean` The log message should contain the filename and position
         of where triggers the logging operation, `false` by default.
-    - `toConsole?: boolean` The log will also output to the console, `false` by 
-        default.
+    - `toConsole?: boolean` The log should also be output to the console, 
+        `false` by default.
     - `outputLevel?: number` Sets the minimum level of logs that should be 
         output to the file, default value is `Logger.Levels.DEBUG`.
     - `mail` An object configures a new Mail instance (from 
@@ -112,8 +112,8 @@ the program will not be able to exit automatically as usual, you have to
 explicitly calling `process.exit()` in case to terminate the program.
 
 ```javascript
-// wait and close the logger in 500 ms, then terminate the program.
+// close the logger and terminate the program.
 logger.close(() => {
     process.exit();
-}, 500);
+});
 ```

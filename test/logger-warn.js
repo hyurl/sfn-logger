@@ -20,13 +20,15 @@ describe("Logger.prototype.warn()", function () {
 
         logger.warn(log);
 
-        logger.close(function () {
-            try {
-                assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [WARN] - ${log}${os.EOL}`);
-                done();
-            } catch (err) {
-                done(err);
-            }
+        setTimeout(() => {
+            logger.close(function () {
+                try {
+                    assert.equal(fs.readFileSync(filename, "utf8"), `[${dateStr}] [WARN] - ${log}${os.EOL}`);
+                    done();
+                } catch (err) {
+                    done(err);
+                }
+            });
         }, 200);
     });
 });

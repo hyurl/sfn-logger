@@ -29,13 +29,15 @@ describe("Compress when file size out limit", function () {
                 logger.log(log + " - " + (i + 1));
             }
 
-            logger.close(() => {
-                try {
-                    assert.ok(fs.existsSync(_filename));
-                    done();
-                } catch (err) {
-                    done(err);
-                }
+            setTimeout(() => {
+                logger.close(() => {
+                    try {
+                        assert.ok(fs.existsSync(_filename));
+                        done();
+                    } catch (err) {
+                        done(err);
+                    }
+                });
             }, 200);
         });
     });
