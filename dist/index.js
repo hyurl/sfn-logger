@@ -136,7 +136,7 @@ class Logger {
         if (level >= this.outputLevel) {
             if (this.shouldTransmit) {
                 // transmit the log via the channel.
-                this.socket.write(bsp_1.send(time, log));
+                this.socket.write(bsp_1.send([time, log]));
             }
             else {
                 this.memorize(time, log);

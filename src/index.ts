@@ -177,7 +177,7 @@ class Logger implements Logger.Options {
         if (level >= this.outputLevel) {
             if (this.shouldTransmit) {
                 // transmit the log via the channel.
-                this.socket.write(send(time, log));
+                this.socket.write(send([time, log]));
             } else {
                 this.memorize(time, log);
             }
