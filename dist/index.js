@@ -37,7 +37,7 @@ class Logger {
             let temp = [];
             this.shouldTransmit = false;
             socket.on("data", buf => {
-                for (let [time, log] of bsp_1.receive(buf, temp)) {
+                for (let [time, log] of bsp_1.decode(buf, temp)) {
                     this.memorize(time, log);
                 }
             });
@@ -136,7 +136,7 @@ class Logger {
         if (level >= this.outputLevel) {
             if (this.shouldTransmit) {
                 // transmit the log via the channel.
-                this.socket.write(bsp_1.send([time, log]));
+                this.socket.write(bsp_1.encode([time, log]));
             }
             else {
                 this.memorize(time, log);

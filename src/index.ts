@@ -12,7 +12,7 @@ import sortBy = require("lodash/sortBy");
 import hash = require("string-hash");
 import Queue from "dynamic-queue";
 import openChannel, { ProcessChannel } from "open-channel";
-import { send, receive } from "bsp";
+import { encode, decode } from "bsp";
 
 const traceHacker = Symbol("traceHacker");
 const eolLength = Buffer.from(os.EOL).byteLength;
@@ -55,7 +55,7 @@ class Logger implements Logger.Options {
 
             this.shouldTransmit = false;
             socket.on("data", buf => {
-                for (let [time, log] of receive<[number, string]>(buf, temp)) {
+                for (let [time, log] of decode<[number, string]>(buf, temp)) {
                     this.memorize(time, log);
                 }
             });
@@ -177,7 +177,7 @@ class Logger implements Logger.Options {
         if (level >= this.outputLevel) {
             if (this.shouldTransmit) {
                 // transmit the log via the channel.
-                this.socket.write(send([time, log]));
+                this.socket.write(encode([time, log]));
             } else {
                 this.memorize(time, log);
             }
